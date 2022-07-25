@@ -140,7 +140,7 @@ func Map2File(db *FcDb) (err error) {
 	}()
 	go func() {
 		defer wg.Done()
-		ed := gob.NewEncoder(_dbFile)
+		ed := gob.NewEncoder(_expireFile)
 		expireErr = ed.Encode(db.ExpireData)
 	}()
 	wg.Wait()
