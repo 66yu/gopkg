@@ -154,17 +154,15 @@ func Map2File(db *FcDb) (err error) {
 }
 
 func (_this *FcDb) Get(key string) (value string, exist bool) {
-	_this.DbRwLock.RLock()
+	_this.DbRwLock.Lock()
 	defer func() {
-		_this.DbRwLock.RUnlock()
+		_this.DbRwLock.Unlock()
 	}()
 	value = ""
 	exist = false
 	expireTime := _this.ExpireData[key]
 	currTime := time.Now().UnixMilli()
 	if currTime > expireTime {
-		defer _this.DbRwLock.Unlock()
-		_this.DbRwLock.Lock()
 		delete(_this.ExpireData, key)
 		delete(_this.DbData, key)
 		Map2FileProducer(_this)
