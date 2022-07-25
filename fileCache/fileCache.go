@@ -163,6 +163,8 @@ func (_this *FcDb) Get(key string) (value string, exist bool) {
 	expireTime := _this.ExpireData[key]
 	currTime := time.Now().UnixMilli()
 	if currTime > expireTime {
+		defer _this.DbRwLock.Unlock()
+		_this.DbRwLock.Lock()
 		delete(_this.ExpireData, key)
 		delete(_this.DbData, key)
 		Map2FileProducer(_this)
