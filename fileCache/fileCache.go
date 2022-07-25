@@ -119,16 +119,18 @@ func Map2File(db *FcDb) (err error) {
 	var expireErr error
 	//读取数据文件
 	_dbFile, err := os.OpenFile(db.DbFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0766)
+	defer _dbFile.Close()
+
 	if err != nil {
 		return
 	}
-	defer _dbFile.Close()
 	//读取过期列表文件
 	_expireFile, err := os.OpenFile(db.ExpireFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0766)
+	defer _expireFile.Close()
+
 	if err != nil {
 		return
 	}
-	defer _expireFile.Close()
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
