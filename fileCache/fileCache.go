@@ -1,8 +1,8 @@
 package fileCache
 
 import (
-	"bufio"
-	"encoding/json"
+	"bytes"
+	"encoding/gob"
 	"github.com/ayu-666/gopkg/dir"
 	"github.com/ayu-666/gopkg/timeTask"
 	"io/ioutil"
@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	dbFileSuffix     = ".db.json"
-	expireFileSuffix = ".expire.json"
+	dbFileSuffix     = ".db.data"
+	expireFileSuffix = ".expire.data"
 )
 
 type FCInterface interface {
@@ -71,27 +71,27 @@ func file2Map(db *FcDb) (err error) {
 		db.fileLock.Unlock()
 	}()
 	var wg sync.WaitGroup
-	wg.Add(2)
 	dbData := map[string]string{}
 	expireData := map[string]int64{}
 	var expireErr error
 	var dbErr error
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		dbByte := []byte("")
 		dbByte, _ = ioutil.ReadFile(db.DbFilePath)
-		if len(dbByte) > 0 {
-			dbErr = json.Unmarshal(dbByte, &dbData)
-		}
+		rd := bytes.NewReader(dbByte)
+		dr := gob.NewDecoder(rd)
+		dr.Decode(&dbData)
 	}()
-
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		ExpireByte := []byte("")
 		ExpireByte, _ = ioutil.ReadFile(db.ExpireFilePath)
-		if len(ExpireByte) > 0 {
-			expireErr = json.Unmarshal(ExpireByte, &expireData)
-		}
+		rd := bytes.NewReader(ExpireByte)
+		dr := gob.NewDecoder(rd)
+		dr.Decode(&expireData)
 	}()
 
 	wg.Wait()
@@ -118,38 +118,28 @@ func Map2File(db *FcDb) (err error) {
 	var dbErr error
 	var expireErr error
 	//读取数据文件
-	_dbFile, err := os.OpenFile(db.DbFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0777)
+	_dbFile, err := os.OpenFile(db.DbFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0766)
 	if err != nil {
 		return
 	}
 	defer _dbFile.Close()
 	//读取过期列表文件
-	_expireFile, err := os.OpenFile(db.ExpireFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0777)
+	_expireFile, err := os.OpenFile(db.ExpireFilePath, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0766)
 	if err != nil {
 		return
 	}
 	defer _expireFile.Close()
-	dbFileBufW := bufio.NewWriter(_dbFile)
-	expireFileBufW := bufio.NewWriter(_expireFile)
 	var wg sync.WaitGroup
 	wg.Add(2)
-	dbByte, err := json.MarshalIndent(db.DbData, "", "  ")
-	if err != nil {
-		return
-	}
-	expireByte, err := json.MarshalIndent(db.ExpireData, "", "  ")
-	if err != nil {
-		return
-	}
 	go func() {
 		defer wg.Done()
-		_, dbErr = dbFileBufW.Write(dbByte)
-		dbFileBufW.Flush()
+		ed := gob.NewEncoder(_dbFile)
+		dbErr = ed.Encode(db.DbData)
 	}()
 	go func() {
 		defer wg.Done()
-		_, expireErr = expireFileBufW.Write(expireByte)
-		expireFileBufW.Flush()
+		ed := gob.NewEncoder(_dbFile)
+		expireErr = ed.Encode(db.ExpireData)
 	}()
 	wg.Wait()
 	if expireErr != nil {
