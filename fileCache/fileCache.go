@@ -57,7 +57,7 @@ func Init(dirPath string, dbName string) (*FcDb, error) {
 	if err != nil {
 		return nil, err
 	}
-	timeTask.NewTask().SetInterval(time.Second).SetConsumer(func() { //设置消费者
+	timeTask.NewTask().SetInterval(100 * time.Millisecond).SetConsumer(func() { //设置消费者
 		Map2FileConsumer(db)
 	})
 	return db, err
